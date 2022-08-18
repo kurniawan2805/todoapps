@@ -1,5 +1,7 @@
 const todos = [];
 const RENDER_EVENT = "render-todo";
+const SAVED_EVENT = "saved-todo";
+const STORAGE_KEY = "TODO_APPS";
 
 document.addEventListener("DOMContentLoaded", function () {
   const submitForm = document.getElementById("form");
@@ -7,6 +9,9 @@ document.addEventListener("DOMContentLoaded", function () {
     event.preventDefault();
     addTodo();
   });
+  if (isStorageExist) {
+    loadDataFromStorage();
+  }
 });
 
 function generateId() {
@@ -30,7 +35,8 @@ function addTodo() {
   const todoObject = generateTodoObject(generateID, textTodo, timestamp, false);
   todos.push(todoObject);
 
-  document.dispatchEvent(new Event(RENDER_EVENT));
+  // document.dispatchEvent(new Event(RENDER_EVENT));
+  updateChange();
 }
 
 function makeTodo(todoObject) {
@@ -86,11 +92,102 @@ document.addEventListener(RENDER_EVENT, function () {
   uncompletedTodoList.innerHTML = "";
   // console.log(uncompletedTodoList);
 
+  const completedTodoList = document.getElementById("completed-todos");
+  completedTodoList.innerHTML = "";
+
   for (let todoItem of todos) {
-    console.log(todoItem);
+    // console.log(todoItem);
     const todoElement = makeTodo(todoItem);
     // console.log(todoElement);
-    uncompletedTodoList.append(todoElement);
+    if (!todoItem.isCompleted) {
+      uncompletedTodoList.append(todoElement);
+    } else {
+      completedTodoList.append(todoElement);
+    }
   }
   // console.log(uncompletedTodoList);
 });
+
+document.addEventListener(SAVED_EVENT, function () {
+  console.log(localStorage.getItem(STORAGE_KEY));
+  alert("Saved");
+});
+
+function findTodo(todoId) {
+  for (let todoItem of todos) {
+    if (todoItem.id === todoId) {
+      return todoItem;
+    }
+  }
+  return null;
+}
+
+function findTodoIndex(todoId) {
+  for (let idx in todos) {
+    if (todos[idx].id === todoId) {
+      return idx;
+    }
+  }
+  return -1;
+}
+
+function addTaskToCompleted(todoId) {
+  const todoTarget = findTodo(todoId);
+  if (todoTarget) {
+    todoTarget.isCompleted = true;
+    // document.dispatchEvent(new Event(RENDER_EVENT));
+    updateChange();
+  }
+}
+
+function removeTaskFromCompled(todoId) {
+  const todoTargetIndex = findTodoIndex(todoId);
+  if (todoTargetIndex !== -1) {
+    todos.splice(todoTargetIndex, 1);
+    // document.dispatchEvent(new Event(RENDER_EVENT));
+    updateChange();
+  }
+}
+
+function undoTaskFromCompleted(todoId) {
+  const todoTarget = findTodo(todoId);
+
+  if (todoTarget) {
+    todoTarget.isCompleted = false;
+    updateChange();
+  }
+}
+
+function updateChange() {
+  document.dispatchEvent(new Event(RENDER_EVENT));
+  saveData();
+  // updateChange();
+}
+
+function saveData() {
+  if (isStorageExist()) {
+    const parsed = JSON.stringify(todos);
+    localStorage.setItem(STORAGE_KEY, parsed);
+    document.dispatchEvent(new Event(SAVED_EVENT));
+  }
+}
+
+function isStorageExist() {
+  if (typeof Storage === undefined) {
+    alert("Browser not supported local storage!");
+    return false;
+  }
+  return true;
+}
+
+function loadDataFromStorage() {
+  const serializedData = localStorage.getItem(STORAGE_KEY);
+  let data = JSON.parse(serializedData);
+
+  if (data !== null) {
+    for (let todo of data) {
+      todos.push(todo);
+    }
+  }
+  document.dispatchEvent(new Event(RENDER_EVENT));
+}
